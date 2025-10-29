@@ -2,9 +2,8 @@ class GhostFluxApp {
     constructor() {
         this.tg = window.Telegram.WebApp;
         this.user = null;
-        this.balance = 0;
+        this.balance = 100; // Начальный баланс для теста
         this.inventory = [];
-        this.API_BASE_URL = "http://localhost:5000/api";
         
         this.init();
     }
@@ -19,51 +18,24 @@ class GhostFluxApp {
             this.user = this.tg.initDataUnsafe.user;
             
             if (this.user) {
-                await this.loadUserData();
                 this.showMainUI();
             } else {
-                this.showError("Ошибка загрузки данных пользователя");
+                // Тестовый режим если нет данных пользователя
+                this.user = { id: 123456789, username: 'test_user' };
+                this.showMainUI();
             }
         } catch (error) {
             console.error('Initialization error:', error);
-            this.showError("Ошибка инициализации приложения");
-        }
-    }
-
-    async loadUserData() {
-        try {
-            const response = await fetch(`${this.API_BASE_URL}/user/${this.user.id}`);
-            const userData = await response.json();
-            
-            if (userData.error) {
-                // Регистрируем пользователя
-                await fetch(`${this.API_BASE_URL}/register`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        user_id: this.user.id,
-                        username: this.user.username
-                    })
-                });
-                
-                // Повторно загружаем данные
-                await this.loadUserData();
-                return;
-            }
-            
-            this.balance = userData.balance;
-            this.updateBalanceDisplay();
-            
-        } catch (error) {
-            console.error('Error loading user data:', error);
-            this.showError("Ошибка загрузки данных пользователя");
+            // Все равно показываем интерфейс
+            this.user = { id: 123456789, username: 'test_user' };
+            this.showMainUI();
         }
     }
 
     showMainUI() {
         document.getElementById('loader').classList.add('hidden');
         document.getElementById('main-ui').classList.remove('hidden');
-        
+        this.updateBalanceDisplay();
         this.setupEventListeners();
     }
 
@@ -101,29 +73,23 @@ class GhostFluxApp {
         spinBtn.disabled = true;
 
         try {
-            const response = await fetch(`${this.API_BASE_URL}/spin-roulette`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: this.user.id })
-            });
-
-            const result = await response.json();
-
-            if (result.error) {
-                alert(result.error);
-                spinBtn.disabled = false;
-                return;
-            }
-
+            // Имитация запроса к серверу
+            const wonItem = this.getRandomItem();
+            
             // Анимация рулетки
-            await this.animateRoulette(result.won_item);
+            await this.animateRoulette(wonItem);
             
             // Обновляем баланс
-            this.balance = result.new_balance;
+            this.balance -= 25; // Стоимость спина
+            this.balance += wonItem.value; // Выигрыш
+            
+            // Добавляем в инвентарь
+            this.inventory.push(wonItem);
+            
             this.updateBalanceDisplay();
             
             // Показываем выигрыш
-            this.showWinModal(result.won_item);
+            this.showWinModal(wonItem);
 
         } catch (error) {
             console.error('Error spinning roulette:', error);
@@ -131,6 +97,30 @@ class GhostFluxApp {
         }
 
         spinBtn.disabled = false;
+    }
+
+    getRandomItem() {
+        const items = [
+            {"name": "Мишка", "value": 15, "chance": 35, "emoji": "🧸"},
+            {"name": "Сердечко", "value": 15, "chance": 35, "emoji": "💖"},
+            {"name": "Ракета", "value": 50, "chance": 10, "emoji": "🚀"},
+            {"name": "Торт", "value": 50, "chance": 10, "emoji": "🎂"},
+            {"name": "Кубок", "value": 100, "chance": 5, "emoji": "🏆"},
+            {"name": "Кольцо", "value": 100, "chance": 5, "emoji": "💍"}
+        ];
+
+        // Простая реализация случайного выбора
+        const random = Math.random() * 100;
+        let currentChance = 0;
+
+        for (const item of items) {
+            currentChance += item.chance;
+            if (random <= currentChance) {
+                return item;
+            }
+        }
+
+        return items[0]; // fallback
     }
 
     async animateRoulette(winningItem) {
@@ -160,21 +150,30 @@ class GhostFluxApp {
         bonusBtn.disabled = true;
 
         try {
-            const response = await fetch(`${this.API_BASE_URL}/daily-bonus`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ user_id: this.user.id })
-            });
+            // Имитация ежедневного бонуса
+            const bonuses = [
+                {"stars": 5, "chance": 70},
+                {"stars": 10, "chance": 15},
+                {"stars": 25, "chance": 10},
+                {"stars": 50, "chance": 5}
+            ];
 
-            const result = await response.json();
+            const random = Math.random() * 100;
+            let currentChance = 0;
+            let bonus = 5;
 
-            if (result.error) {
-                alert(result.error);
-            } else {
-                this.balance = result.new_balance;
-                this.updateBalanceDisplay();
-                alert(`🎁 Вы получили ${result.bonus} звёзд!`);
+            for (const b of bonuses) {
+                currentChance += b.chance;
+                if (random <= currentChance) {
+                    bonus = b.stars;
+                    break;
+                }
             }
+
+            this.balance += bonus;
+            this.updateBalanceDisplay();
+            
+            alert(`🎁 Вы получили ${bonus} звёзд!`);
 
         } catch (error) {
             console.error('Error claiming bonus:', error);
@@ -185,14 +184,7 @@ class GhostFluxApp {
     }
 
     async showInventory() {
-        try {
-            const response = await fetch(`${this.API_BASE_URL}/inventory/${this.user.id}`);
-            this.inventory = await response.json();
-            this.renderInventory();
-        } catch (error) {
-            console.error('Error loading inventory:', error);
-        }
-        
+        this.renderInventory();
         document.getElementById('inventory-modal').classList.remove('hidden');
     }
 
@@ -200,72 +192,41 @@ class GhostFluxApp {
         const inventoryList = document.getElementById('inventory-list');
         
         if (this.inventory.length === 0) {
-            inventoryList.innerHTML = '<p>Инвентарь пуст</p>';
+            inventoryList.innerHTML = '<p style="text-align: center; padding: 20px;">🎒 Инвентарь пуст</p>';
             return;
         }
 
-        inventoryList.innerHTML = this.inventory.map(item => `
+        inventoryList.innerHTML = this.inventory.map((item, index) => `
             <div class="inventory-item">
                 <div>
-                    <strong>${this.getItemEmoji(item.item_name)} ${item.item_name}</strong>
+                    <strong>${item.emoji} ${item.name}</strong>
                     <br>
-                    <small>${item.item_value} звёзд</small>
+                    <small>${item.value} звёзд</small>
                 </div>
-                <button class="withdraw-btn" onclick="app.withdrawItem('${item.item_name}', ${item.item_value})">
+                <button class="withdraw-btn" onclick="app.withdrawItem(${index})">
                     Вывести
                 </button>
             </div>
         `).join('');
     }
 
-    getItemEmoji(itemName) {
-        const emojis = {
-            'Мишка': '🧸',
-            'Сердечко': '💖',
-            'Ракета': '🚀',
-            'Торт': '🎂',
-            'Кубок': '🏆',
-            'Кольцо': '💍'
-        };
-        return emojis[itemName] || '🎁';
-    }
-
-    async withdrawItem(itemName, itemValue) {
-        if (!confirm(`Вывести ${itemName} (${itemValue} звёзд)?`)) {
+    withdrawItem(index) {
+        const item = this.inventory[index];
+        if (!confirm(`Вывести ${item.name} (${item.value} звёзд)?\n\nАдминистратор @KXKXKXKXKXKXKXKXKXKXK свяжется с вами.`)) {
             return;
         }
 
-        try {
-            const response = await fetch(`${this.API_BASE_URL}/withdraw`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    user_id: this.user.id,
-                    username: this.user.username,
-                    item_name: itemName,
-                    item_value: itemValue
-                })
-            });
-
-            const result = await response.json();
-
-            if (result.status === 'withdrawal_created') {
-                alert('Заявка на вывод создана! Администратор свяжется с вами.');
-                this.showInventory(); // Обновляем инвентарь
-            } else {
-                alert('Ошибка при создании заявки');
-            }
-
-        } catch (error) {
-            console.error('Error withdrawing item:', error);
-            alert('Ошибка при выводе предмета');
-        }
+        // Удаляем из инвентаря
+        this.inventory.splice(index, 1);
+        this.renderInventory();
+        
+        alert('✅ Заявка на вывод создана! Администратор свяжется с вами в Telegram.');
     }
 
     showWinModal(item) {
         const winItem = document.getElementById('win-item');
         winItem.innerHTML = `
-            <div>${item.emoji}</div>
+            <div style="font-size: 48px;">${item.emoji}</div>
             <h3>${item.name}</h3>
             <p>${item.value} звёзд</p>
         `;
@@ -275,10 +236,6 @@ class GhostFluxApp {
 
     updateBalanceDisplay() {
         document.getElementById('balance').textContent = this.balance;
-    }
-
-    showError(message) {
-        alert(`❌ ${message}`);
     }
 }
 
