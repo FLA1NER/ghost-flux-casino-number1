@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ghost FluX Casino</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div class="app">
+        <!-- Загрузчик -->
+        <div id="loader" class="loader">
+            <div class="neon-text">Ghost FluX</div>
+            <div class="loading-spinner"></div>
+        </div>
+
+        <!-- Основной интерфейс -->
+        <div id="main-ui" class="main-ui hidden">
+            <!-- Шапка -->
+            <header class="header">
+                <div class="balance-container">
+                    <div class="stars-balance">
+                        <span class="stars-icon">⭐</span>
+                        <span id="balance">0</span>
+                    </div>
+                </div>
+                <div class="logo">
+                    <h1 class="neon-text">Ghost FluX</h1>
+                </div>
+                <div class="user-info">
+                    <button id="inventory-btn" class="btn-neon">🎒</button>
+                    <button id="daily-btn" class="btn-neon">🎁</button>
+                </div>
+            </header>
+
+            <!-- Реклама канала -->
+            <div class="channel-ad">
+                <a href="https://t.me/Ghost_FluX" target="_blank" class="ad-link">
+                    📢 Подпишись на наш канал @Ghost_FluX
+                </a>
+            </div>
+
+            <!-- Игровая зона -->
+            <main class="game-area">
+                <!-- Рулетка -->
+                <div class="roulette-section">
+                    <h2 class="section-title">🎡 Рулетка</h2>
+                    <div class="roulette-container">
+                        <div id="roulette" class="roulette">
+                            <div class="roulette-item" data-value="15">🧸 Мишка</div>
+                            <div class="roulette-item" data-value="15">💖 Сердечко</div>
+                            <div class="roulette-item" data-value="50">🚀 Ракета</div>
+                            <div class="roulette-item" data-value="50">🎂 Торт</div>
+                            <div class="roulette-item" data-value="100">🏆 Кубок</div>
+                            <div class="roulette-item" data-value="100">💍 Кольцо</div>
+                        </div>
+                        <button id="spin-btn" class="spin-btn btn-neon">
+                            Крутить за 25⭐
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Ежедневный бонус -->
+                <div class="bonus-section">
+                    <h2 class="section-title">🎁 Ежедневный бонус</h2>
+                    <button id="daily-bonus-btn" class="bonus-btn btn-neon">
+                        Получить бонус
+                    </button>
+                </div>
+
+                <!-- Пополнение -->
+                <div class="deposit-section">
+                    <h2 class="section-title">💫 Пополнение баланса</h2>
+                    <div class="prices">
+                        <div class="price-item">50⭐ = 85₽</div>
+                        <div class="price-item">100⭐ = 160₽</div>
+                        <div class="price-item">250⭐ = 400₽</div>
+                    </div>
+                    <div class="contact-info">
+                        Связь для покупки: @KXKXKXKXKXKXKXKXKXKXK
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <!-- Модальные окна -->
+        <div id="inventory-modal" class="modal hidden">
+            <div class="modal-content">
+                <h2>🎒 Инвентарь</h2>
+                <div id="inventory-list" class="inventory-list"></div>
+                <button class="btn-neon close-btn">Закрыть</button>
+            </div>
+        </div>
+
+        <div id="win-modal" class="modal hidden">
+            <div class="modal-content win-content">
+                <h2>🎉 Поздравляем!</h2>
+                <div id="win-item" class="win-item"></div>
+                <button class="btn-neon close-btn">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+</html>

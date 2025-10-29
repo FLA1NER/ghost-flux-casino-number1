@@ -1,0 +1,10 @@
+{
+    "name": "Ghost FluX Casino",
+    "short_name": "GhostFluX",
+    "description": "Казино с неоновым стилем и крутыми призами",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "theme_color": "#ff00de",
+    "background_color": "#0f0f23",
+    "display": "standalone"
+}
