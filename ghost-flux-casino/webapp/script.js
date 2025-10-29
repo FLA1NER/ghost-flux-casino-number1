@@ -14,10 +14,6 @@ class GhostFluxApp {
             // Инициализация Telegram WebApp
             this.tg.expand();
             this.tg.enableClosingConfirmation();
-            this.tg.BackButton.show();
-            this.tg.BackButton.onClick(() => {
-                this.closeModals();
-            });
             
             // Получаем данные пользователя
             this.user = this.tg.initDataUnsafe.user;
@@ -34,36 +30,16 @@ class GhostFluxApp {
         }
     }
 
-    async makeRequest(endpoint, options = {}) {
-        try {
-            const url = `${this.API_BASE_URL}/${endpoint}`;
-            const response = await fetch(url, {
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...options.headers
-                },
-                ...options
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            return await response.json();
-        } catch (error) {
-            console.error(`API request failed (${endpoint}):`, error);
-            throw error;
-        }
-    }
-
     async loadUserData() {
         try {
-            const userData = await this.makeRequest(`user/${this.user.id}`);
+            const response = await fetch(`${this.API_BASE_URL}/user/${this.user.id}`);
+            const userData = await response.json();
             
             if (userData.error) {
                 // Регистрируем пользователя
-                await this.makeRequest('register', {
+                await fetch(`${this.API_BASE_URL}/register`, {
                     method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         user_id: this.user.id,
                         username: this.user.username
@@ -79,22 +55,15 @@ class GhostFluxApp {
             this.updateBalanceDisplay();
             
         } catch (error) {
+            console.error('Error loading user data:', error);
             this.showError("Ошибка загрузки данных пользователя");
-        }
-    }
-
-    async loadInventory() {
-        try {
-            this.inventory = await this.makeRequest(`inventory/${this.user.id}`);
-            this.renderInventory();
-        } catch (error) {
-            this.showError("Ошибка загрузки инвентаря");
         }
     }
 
     showMainUI() {
         document.getElementById('loader').classList.add('hidden');
         document.getElementById('main-ui').classList.remove('hidden');
+        
         this.setupEventListeners();
     }
 
@@ -117,37 +86,32 @@ class GhostFluxApp {
         // Закрытие модальных окон
         document.querySelectorAll('.close-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
-                this.closeModals();
+                e.target.closest('.modal').classList.add('hidden');
             });
         });
-    }
-
-    closeModals() {
-        document.querySelectorAll('.modal').forEach(modal => {
-            modal.classList.add('hidden');
-        });
-        this.tg.BackButton.hide();
     }
 
     async spinRoulette() {
         if (this.balance < 25) {
-            this.showError('Недостаточно звёзд для спина!');
+            alert('Недостаточно звёзд для спина!');
             return;
         }
 
         const spinBtn = document.getElementById('spin-btn');
-        const originalText = spinBtn.textContent;
         spinBtn.disabled = true;
-        spinBtn.textContent = '🌀 Крутим...';
 
         try {
-            const result = await this.makeRequest('spin-roulette', {
+            const response = await fetch(`${this.API_BASE_URL}/spin-roulette`, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: this.user.id })
             });
 
+            const result = await response.json();
+
             if (result.error) {
-                this.showError(result.error);
+                alert(result.error);
+                spinBtn.disabled = false;
                 return;
             }
 
@@ -162,21 +126,18 @@ class GhostFluxApp {
             this.showWinModal(result.won_item);
 
         } catch (error) {
-            this.showError('Ошибка при вращении рулетки');
-        } finally {
-            spinBtn.disabled = false;
-            spinBtn.textContent = originalText;
+            console.error('Error spinning roulette:', error);
+            alert('Ошибка при вращении рулетки');
         }
+
+        spinBtn.disabled = false;
     }
 
     async animateRoulette(winningItem) {
         const roulette = document.getElementById('roulette');
         const items = roulette.querySelectorAll('.roulette-item');
         
-        // Сбрасываем подсветку
-        items.forEach(item => item.classList.remove('highlight'));
-        
-        // Анимация вращения
+        // Добавляем класс анимации
         roulette.classList.add('spinning');
         
         // Ждем завершения анимации
@@ -187,14 +148,9 @@ class GhostFluxApp {
         
         // Подсвечиваем выигранный предмет
         items.forEach(item => {
+            item.classList.remove('highlight');
             if (item.textContent.includes(winningItem.emoji)) {
                 item.classList.add('highlight');
-                
-                // Дополнительная анимация для выигранного предмета
-                item.style.animation = 'pulse 0.5s infinite alternate';
-                setTimeout(() => {
-                    item.style.animation = '';
-                }, 2000);
             }
         });
     }
@@ -204,54 +160,58 @@ class GhostFluxApp {
         bonusBtn.disabled = true;
 
         try {
-            const result = await this.makeRequest('daily-bonus', {
+            const response = await fetch(`${this.API_BASE_URL}/daily-bonus`, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ user_id: this.user.id })
             });
 
+            const result = await response.json();
+
             if (result.error) {
-                this.showError(result.error);
+                alert(result.error);
             } else {
                 this.balance = result.new_balance;
                 this.updateBalanceDisplay();
-                this.showSuccess(`🎁 Вы получили ${result.bonus} звёзд!`);
-                
-                // Обновляем кнопку бонуса
-                bonusBtn.textContent = '🎁 Бонус получен';
-                bonusBtn.style.opacity = '0.7';
+                alert(`🎁 Вы получили ${result.bonus} звёзд!`);
             }
 
         } catch (error) {
-            this.showError('Ошибка при получении бонуса');
+            console.error('Error claiming bonus:', error);
+            alert('Ошибка при получении бонуса');
         }
 
         bonusBtn.disabled = false;
     }
 
     async showInventory() {
-        this.tg.BackButton.show();
-        await this.loadInventory();
+        try {
+            const response = await fetch(`${this.API_BASE_URL}/inventory/${this.user.id}`);
+            this.inventory = await response.json();
+            this.renderInventory();
+        } catch (error) {
+            console.error('Error loading inventory:', error);
+        }
+        
         document.getElementById('inventory-modal').classList.remove('hidden');
     }
 
     renderInventory() {
         const inventoryList = document.getElementById('inventory-list');
         
-        if (!this.inventory || this.inventory.length === 0) {
-            inventoryList.innerHTML = '<p style="text-align: center; padding: 20px;">🎒 Инвентарь пуст</p>';
+        if (this.inventory.length === 0) {
+            inventoryList.innerHTML = '<p>Инвентарь пуст</p>';
             return;
         }
 
         inventoryList.innerHTML = this.inventory.map(item => `
             <div class="inventory-item">
-                <div class="item-info">
-                    <span class="item-emoji">${this.getItemEmoji(item[2])}</span>
-                    <div class="item-details">
-                        <strong>${item[2]}</strong>
-                        <small>${item[3]} звёзд</small>
-                    </div>
+                <div>
+                    <strong>${this.getItemEmoji(item.item_name)} ${item.item_name}</strong>
+                    <br>
+                    <small>${item.item_value} звёзд</small>
                 </div>
-                <button class="withdraw-btn" onclick="app.withdrawItem('${item[2]}', ${item[3]})">
+                <button class="withdraw-btn" onclick="app.withdrawItem('${item.item_name}', ${item.item_value})">
                     Вывести
                 </button>
             </div>
@@ -271,13 +231,14 @@ class GhostFluxApp {
     }
 
     async withdrawItem(itemName, itemValue) {
-        if (!confirm(`Вывести ${itemName} (${itemValue} звёзд)?\n\nАдминистратор свяжется с вами для отправки приза.`)) {
+        if (!confirm(`Вывести ${itemName} (${itemValue} звёзд)?`)) {
             return;
         }
 
         try {
-            const result = await this.makeRequest('withdraw', {
+            const response = await fetch(`${this.API_BASE_URL}/withdraw`, {
                 method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     user_id: this.user.id,
                     username: this.user.username,
@@ -286,26 +247,27 @@ class GhostFluxApp {
                 })
             });
 
+            const result = await response.json();
+
             if (result.status === 'withdrawal_created') {
-                this.showSuccess('✅ Заявка на вывод создана! Администратор свяжется с вами.');
-                this.closeModals();
-                await this.loadInventory(); // Обновляем инвентарь
+                alert('Заявка на вывод создана! Администратор свяжется с вами.');
+                this.showInventory(); // Обновляем инвентарь
             } else {
-                this.showError('Ошибка при создании заявки');
+                alert('Ошибка при создании заявки');
             }
 
         } catch (error) {
-            this.showError('Ошибка при выводе предмета');
+            console.error('Error withdrawing item:', error);
+            alert('Ошибка при выводе предмета');
         }
     }
 
     showWinModal(item) {
-        this.tg.BackButton.show();
         const winItem = document.getElementById('win-item');
         winItem.innerHTML = `
-            <div class="win-emoji">${item.emoji}</div>
+            <div>${item.emoji}</div>
             <h3>${item.name}</h3>
-            <p class="win-value">${item.value} звёзд</p>
+            <p>${item.value} звёзд</p>
         `;
         
         document.getElementById('win-modal').classList.remove('hidden');
@@ -317,10 +279,6 @@ class GhostFluxApp {
 
     showError(message) {
         alert(`❌ ${message}`);
-    }
-
-    showSuccess(message) {
-        alert(`✅ ${message}`);
     }
 }
 
